@@ -17,8 +17,14 @@ concept Hasher = requires(T value, K key) {
 template<typename Key, Hasher<Key> Hash = std::hash<Key>>
 class hash_table final {
 public:
+    using value_type = Key;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using hasher = Hash;
     using hash_type = std::size_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+
 
     hash_table() : m_size{0}, m_buckets{s_initial_capacity} {
 
@@ -31,8 +37,8 @@ public:
     hash_table& operator=(const hash_table&) = default;
     hash_table& operator=(hash_table&&) = default;
 
-    auto add(const Key& key) noexcept -> bool {
-        const auto hash = Hash{}(key);
+    auto add(const_reference key) noexcept -> bool {
+        const auto hash = hasher{}(key);
         auto index = hash % capacity();
 
         bucket entry {
@@ -62,8 +68,8 @@ public:
         return true;
     }
 
-    auto insert(Key key) noexcept -> void {
-        const auto hash = Hash{}(key);
+    auto insert(value_type key) noexcept -> void {
+        const auto hash = hasher{}(key);
         auto index = hash % capacity();
 
         bucket entry {
@@ -131,7 +137,7 @@ public:
         return false;
     }
 
-    auto find(hash_type hash) noexcept -> std::optional<std::reference_wrapper<Key>> {
+    auto find(hash_type hash) noexcept -> std::optional<std::reference_wrapper<value_type>> {
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
@@ -145,7 +151,7 @@ public:
         return {};
     }
 
-    auto find(hash_type hash) const noexcept -> std::optional<std::reference_wrapper<const Key>> {
+    auto find(hash_type hash) const noexcept -> std::optional<std::reference_wrapper<const value_type >> {
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
@@ -178,7 +184,7 @@ public:
 
 private:
     struct bucket {
-        Key key{};
+        value_type key{};
         hash_type hash{};
         bool occupied{false};
         size_type distance{0};

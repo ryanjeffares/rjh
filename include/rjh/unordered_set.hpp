@@ -10,10 +10,15 @@ namespace rjh {
 template<typename Key, typename Hash = std::hash<Key>>
 class unordered_set {
 public:
-    using size_type = std::size_t;
     using value_type = Key;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using hasher = Hash;
+    using hash_type = std::size_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
 
-    auto add(const value_type& key) noexcept -> bool {
+    auto add(const_reference key) noexcept -> bool {
         return m_hash_table.add(key);
     }
 
@@ -27,20 +32,20 @@ public:
     }
 
     template<typename K>
-    auto insert(K key) noexcept -> void {
-        insert(Key{std::move(key)});
+    auto insert(K&& key) noexcept -> void {
+        insert(value_type{std::forward<K>(key)});
     }
 
-    auto remove(const Key& key) noexcept -> bool {
-        return m_hash_table.remove(Hash{}(key));
+    auto remove(const_reference key) noexcept -> bool {
+        return m_hash_table.remove(hasher{}(key));
     }
 
     auto clear() noexcept -> void {
         m_hash_table.clear();
     }
 
-    auto contains(const Key& key) const noexcept -> bool {
-        return m_hash_table.contains(Hash{}(key));
+    auto contains(const_reference key) const noexcept -> bool {
+        return m_hash_table.contains(hasher{}(key));
     }
 
     auto empty() const noexcept -> bool {
@@ -56,7 +61,7 @@ public:
     }
 
 private:
-    detail::hash_table<value_type, Hash> m_hash_table;
+    detail::hash_table<value_type, hasher> m_hash_table;
 };
 } // namespace rjh
 

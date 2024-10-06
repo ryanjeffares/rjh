@@ -3,28 +3,33 @@
 
 #include "detail/hash_table.hpp"
 
-#include <concepts>
 #include <functional>
-#include <unordered_map>
 #include <utility>
 
 namespace rjh {
+template<typename First, typename Second>
+struct pair {
+    First first;
+    Second second;
+};
+
 template<typename Key, typename Value, typename Hash = std::hash<Key>>
 class unordered_map {
 public:
-    struct pair {
-        Key first;
-        Value second;
-    };
-
+    using key_type = Key;
+    using mapped_type = Value;
+    using value_type = pair<key_type, mapped_type>;
     using size_type = std::size_t;
-    using value_type = pair;
+    using difference_type = std::ptrdiff_t;
+    using hasher = Hash;
+    using reference = value_type&;
+    using const_reference = const value_type&;
 
-    auto add(const value_type& pair) noexcept -> bool {
+    auto add(const_reference pair) noexcept -> bool {
         return m_hash_table.add(pair);
     }
 
-    auto add(const Key& key, const Value& value) noexcept -> bool {
+    auto add(const key_type& key, const value_type& value) noexcept -> bool {
         return add({key, value});
     }
 
@@ -37,21 +42,21 @@ public:
         m_hash_table.insert(std::move(pair));
     }
 
-    auto insert(Key key, Value value) noexcept -> void {
+    auto insert(key_type key, mapped_type value) noexcept -> void {
         insert({std::move(key), std::move(value)});
     }
 
     template<typename K, typename V>
-    auto insert(K key, V value) noexcept -> void {
-        insert({std::move(key), std::move(value)});
+    auto insert(K&& key, V&& value) noexcept -> void {
+        insert({std::forward<K>(key), std::forward<V>(value)});
     }
 
-    auto remove(const Key& key) noexcept -> bool {
-        return m_hash_table.remove(Hash{}(key));
+    auto remove(const key_type& key) noexcept -> bool {
+        return m_hash_table.remove(hasher{}(key));
     }
 
-    auto find(const Key& key) noexcept -> std::optional<std::reference_wrapper<Value>> {
-        auto entry = m_hash_table.find(Hash{}(key));
+    auto find(const key_type& key) noexcept -> std::optional<std::reference_wrapper<mapped_type>> {
+        auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
         } else {
@@ -59,8 +64,8 @@ public:
         }
     }
 
-    auto find(const Key& key) const noexcept -> std::optional<std::reference_wrapper<const Value>> {
-        auto entry = m_hash_table.find(Hash{}(key));
+    auto find(const key_type& key) const noexcept -> std::optional<std::reference_wrapper<const mapped_type>> {
+        auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
         } else {
@@ -68,17 +73,17 @@ public:
         }
     }
 
-    auto operator[](const Key& key) noexcept -> Value& {
+    auto operator[](const key_type& key) noexcept -> mapped_type& {
         if (!contains(key)) {
-            insert(key, Value{});
+            insert(key, mapped_type{});
         }
 
         return find(key)->get();
     }
 
-    auto operator[](const Key& key) const noexcept -> const Value& {
+    auto operator[](const key_type& key) const noexcept -> const mapped_type& {
         if (!contains(key)) {
-            insert(key, Value{});
+            insert(key, mapped_type{});
         }
 
         return find(key)->get();
@@ -89,7 +94,7 @@ public:
     }
 
     auto contains(const Key& key) const noexcept -> bool {
-        return m_hash_table.contains(Hash{}(key));
+        return m_hash_table.contains(hasher{}(key));
     }
 
     auto empty() const noexcept -> bool {
@@ -106,8 +111,9 @@ public:
 
 private:
     struct hash {
-        [[nodiscard]] auto operator()(const value_type& pair) const noexcept -> std::size_t {
-            return Hash{}(pair.first);
+        [[nodiscard]]
+        auto operator()(const value_type& pair) const noexcept -> std::size_t {
+            return hasher{}(pair.first);
         }
     };
 
