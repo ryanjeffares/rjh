@@ -2,18 +2,22 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <iostream>
+
 namespace rjh::tests {
 TEST_CASE("rjh::unordered_set<int>", "[rjh::unordered_set tests]") {
     unordered_set<int> set;
 
     REQUIRE(set.empty());
     REQUIRE(set.capacity() == 8);
+    REQUIRE(set.begin() == set.end());
 
     for (auto i = 0; i < 100; i++) {
         set.insert(i);
     }
 
     REQUIRE(set.size() == 100);
+    REQUIRE(*set.begin() == 0);
 
     for (auto i = 0; i < 200; i++) {
         if (i >= 100) {

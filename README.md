@@ -13,7 +13,8 @@ The `rjl` containers are not designed to be a drop-in replacement for STL contai
 ## TODO
 
 * Ordered `set` and `map`
-* Iterators for all collections
+* Iterators for `unordered_map`
+* Expand iterators for `+/-` overloads, implicit casting? And more tests
 * Proper `noexcept` specifiers
 * Documentation
 * Benchmark against other libraries

@@ -18,6 +18,98 @@ public:
     using reference = value_type&;
     using const_reference = const value_type&;
 
+    class iterator final {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = difference_type;
+        using value_type = value_type;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+        using table_iterator = typename detail::hash_table<value_type, hasher>::iterator;
+
+        iterator(table_iterator it) : m_iterator{it} {
+
+        }
+
+        auto operator*() const noexcept -> reference {
+            return m_iterator->key;
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return &m_iterator->key;
+        }
+
+        auto operator++() noexcept -> iterator& {
+            m_iterator++;
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> iterator {
+            auto temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator == b.m_iterator;
+        }
+
+        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator != b.m_iterator;
+        }
+    private:
+        table_iterator m_iterator;
+    };
+
+    class const_iterator final {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = difference_type;
+        using value_type = value_type;
+        using pointer = value_type*;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+
+        using table_iterator = typename detail::hash_table<value_type, hasher>::const_iterator;
+
+        const_iterator(table_iterator it) : m_iterator{it} {
+
+        }
+
+        auto operator*() const noexcept -> const_reference {
+            return m_iterator->key;
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return &m_iterator->key;
+        }
+
+        auto operator++() noexcept -> iterator& {
+            m_iterator++;
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> iterator {
+            auto temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator == b.m_iterator;
+        }
+
+        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator != b.m_iterator;
+        }
+    private:
+        table_iterator m_iterator;
+    };
+
+    using iterator = iterator;
+    using const_iterator = const_iterator;
+
     auto add(const_reference key) noexcept -> bool {
         return m_hash_table.add(key);
     }
@@ -58,6 +150,14 @@ public:
 
     auto size() const noexcept -> size_type {
         return m_hash_table.size();
+    }
+
+    auto begin() noexcept -> iterator {
+        return m_hash_table.begin();
+    }
+
+    auto end() noexcept -> iterator {
+        return m_hash_table.end();
     }
 
 private:

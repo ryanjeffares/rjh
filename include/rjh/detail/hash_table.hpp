@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstddef>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <vector>
 
@@ -25,6 +26,114 @@ public:
     using reference = value_type&;
     using const_reference = const value_type&;
 
+    struct bucket {
+        value_type key{};
+        hash_type hash{};
+        bool occupied{false};
+        size_type distance{0};
+    };
+
+    class iterator final {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = difference_type;
+        using value_type = bucket;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+        iterator(pointer ptr, pointer end)
+            : m_pointer{ptr}
+            , m_end{end} {
+
+        }
+
+        auto operator*() const noexcept -> reference {
+            return *m_pointer;
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return m_pointer;
+        }
+
+        auto operator++() noexcept -> iterator& {
+            do {
+                m_pointer++;
+            } while (m_pointer != m_end && !m_pointer->occupied);
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> iterator {
+            auto temp = *this;
+            do {
+                ++(*this);
+            } while (m_pointer != m_end && !m_pointer->occupied);
+            return temp;
+        }
+
+        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_pointer == b.m_pointer;
+        }
+
+        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_pointer != b.m_pointer;
+        }
+    private:
+        pointer m_pointer;
+        pointer m_end;
+    };
+
+    class const_iterator final {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = difference_type;
+        using value_type = bucket;
+        using pointer = value_type*;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+
+        const_iterator(pointer ptr, pointer end)
+            : m_pointer{ptr}
+            , m_end{end} {
+
+        }
+
+        auto operator*() const noexcept -> const_reference {
+            return *m_pointer;
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return m_pointer;
+        }
+
+        auto operator++() noexcept -> iterator& {
+            do {
+                m_pointer++;
+            } while (m_pointer != m_end && !m_pointer->occupied);
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> iterator {
+            auto temp = *this;
+            do {
+                ++(*this);
+            } while (m_pointer != m_end && !m_pointer->occupied);
+            return temp;
+        }
+
+        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_pointer == b.m_pointer;
+        }
+
+        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_pointer != b.m_pointer;
+        }
+    private:
+        pointer m_pointer;
+        pointer m_end;
+    };
+
+    using iterator = iterator;
+    using const_iterator = const_iterator;
 
     hash_table() : m_size{0}, m_buckets{s_initial_capacity} {
 
@@ -182,14 +291,63 @@ public:
         return m_size;
     }
 
-private:
-    struct bucket {
-        value_type key{};
-        hash_type hash{};
-        bool occupied{false};
-        size_type distance{0};
-    };
+    auto begin() noexcept -> iterator {
+        if (empty()) {
+            return end();
+        }
 
+        iterator it{
+            m_buckets.begin().operator->(),
+            m_buckets.end().operator->()
+        };
+
+        if (!it->occupied) {
+            it++;
+        }
+
+        return it;
+    }
+
+    auto begin() const noexcept -> const_iterator {
+        if (empty()) {
+            return end();
+        }
+
+        const_iterator it{
+            m_buckets.begin().operator->(),
+            m_buckets.end().operator->()
+        };
+
+        if (!it->occupied) {
+            it++;
+        }
+
+        return it;
+    }
+
+    auto cbegin() const noexcept -> const_iterator {
+        return begin();
+    }
+
+    auto end() noexcept -> iterator {
+        return iterator{
+            m_buckets.end().operator->(),
+            m_buckets.end().operator->(),
+        };
+    }
+
+    auto end() const noexcept -> const_iterator {
+        return const_iterator{
+            m_buckets.end().operator->(),
+            m_buckets.end().operator->(),
+        };
+    }
+
+    auto cend() const noexcept -> const_iterator {
+        return end();
+    }
+
+private:
     auto check_load() noexcept -> void {
         if (static_cast<float>(size()) / static_cast<float>(capacity()) >= s_grow_factor) {
             grow_and_rehash();
