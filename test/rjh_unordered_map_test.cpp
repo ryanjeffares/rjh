@@ -44,10 +44,6 @@ TEST_CASE("rjh::unordered_map<int, int>", "[rjh::unordered_map tests]") {
     REQUIRE(map[9] == 9);
     REQUIRE(map[20] == 20);
     REQUIRE(map[40] == 0);
-
-    for (auto& [k, v] : map) {
-        std::cout << k << ' ' << v << std::endl;
-    }
 }
 
 TEST_CASE("rjh::unordered_map<std::string, std::optional<int>>", "[rjh::unordered_map tests]") {

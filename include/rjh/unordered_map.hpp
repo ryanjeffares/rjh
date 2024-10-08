@@ -17,7 +17,7 @@ class unordered_map {
 public:
     using key_type = Key;
     using mapped_type = Value;
-    using value_type = std::pair<const key_type, mapped_type>;
+    using value_type = std::pair<key_type, mapped_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using hasher = Hash;
@@ -33,53 +33,69 @@ private:
     };
 
 public:
-    class iterator final {
+    template<typename T, typename It>
+    class raw_iterator final {
     public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type  = difference_type;
-        using value_type = value_type;
+        using value_type = T;
         using pointer = value_type*;
+        using const_pointer = const pointer;
         using reference  = value_type&;
+        using const_reference = const value_type&;
+        using key_type = std::conditional_t<std::is_const_v<T>, const key_type, key_type>;
+        using key_type_reference = key_type&;
+        using const_key_type_reference = const key_type&;
+        using mapped_type = std::conditional_t<std::is_const_v<T>, const mapped_type, mapped_type>;
+        using mapped_type_reference = mapped_type&;
+        using const_mapped_type_reference = const mapped_type&;
+        using table_iterator = It;
 
-    private:
-        using table_iterator = typename detail::hash_table<value_type, pair_hash>::iterator;
-
-    public:
-        iterator(table_iterator it) : m_iterator{it} {
+        raw_iterator(table_iterator it) : m_iterator{it} {
 
         }
 
-        auto operator*() const noexcept -> reference {
+        auto operator*() const noexcept -> const_reference {
             return m_iterator->key;
         }
 
-        auto operator->() const noexcept -> pointer {
+        auto operator->() const noexcept -> const_pointer {
             return &m_iterator->key;
         }
 
-        auto operator++() noexcept -> iterator& {
+        auto key() const noexcept -> const_key_type_reference {
+            return m_iterator->key.first;
+        }
+
+        auto value() const noexcept -> mapped_type_reference {
+            return m_iterator->key.second;
+        }
+
+        auto operator++() noexcept -> raw_iterator& {
             m_iterator++;
             return *this;
         }
 
-        auto operator++(int) noexcept -> iterator {
+        auto operator++(int) noexcept -> raw_iterator {
             auto temp = *this;
             ++(*this);
             return temp;
         }
 
-        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator==(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_iterator == b.m_iterator;
         }
 
-        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator!=(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_iterator != b.m_iterator;
         }
+
     private:
         table_iterator m_iterator;
     };
 
-    using iterator = iterator;
+    using iterator = raw_iterator<value_type, typename detail::hash_table<value_type, pair_hash>::iterator>;
+    using const_iterator = raw_iterator<const value_type, typename detail::hash_table<value_type, pair_hash>::const_iterator>;
 
     auto add(const_reference pair) noexcept -> bool {
         return m_hash_table.add(pair);
@@ -169,25 +185,25 @@ public:
         return m_hash_table.begin();
     }
 
-//    auto begin() const noexcept -> const_iterator {
-//        return m_hash_table.begin();
-//    }
-//
-//    auto cbegin() const noexcept -> const_iterator {
-//        return m_hash_table.cbegin();
-//    }
+    auto begin() const noexcept -> const_iterator {
+        return m_hash_table.begin();
+    }
+
+    auto cbegin() const noexcept -> const_iterator {
+        return m_hash_table.cbegin();
+    }
 
     auto end() noexcept -> iterator {
         return m_hash_table.end();
     }
 
-//    auto end() const noexcept -> const_iterator {
-//        return m_hash_table.end();
-//    }
-//
-//    auto cend() const noexcept -> const_iterator {
-//        return m_hash_table.cend();
-//    }
+    auto end() const noexcept -> const_iterator {
+        return m_hash_table.end();
+    }
+
+    auto cend() const noexcept -> const_iterator {
+        return m_hash_table.cend();
+    }
 
 private:
     detail::hash_table<value_type, pair_hash> m_hash_table;

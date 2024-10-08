@@ -93,4 +93,4 @@ TEST_CASE("rjh::unordered_set<custom_type>", "[rjh::unordered_set tests]") {
     REQUIRE(!set.remove(custom_type{}));
     REQUIRE(set.empty());
 }
-}
+} // namespace rjh::tests

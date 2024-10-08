@@ -12,8 +12,8 @@ The `rjl` containers are not designed to be a drop-in replacement for STL contai
 
 ## TODO
 
-* Finish terators for `unordered_map`
-  * Store pairs as `pair<const Key, Value>` and do some nastiness to move them internally like the STL does 
+* Figure out a way to return something from dereferencing an iterator that can be destructured
+* Finish API
 * More tests for iterators
 * Proper `noexcept` specifiers
 * Documentation

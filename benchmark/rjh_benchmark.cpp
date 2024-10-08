@@ -3,9 +3,10 @@
 
 #include <benchmark/benchmark.h>
 
+#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <string>
 
 static auto benchmark_std_unordered_set_adding_ints(benchmark::State& state) -> void {
     for (auto _ : state) {

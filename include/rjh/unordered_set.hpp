@@ -20,17 +20,17 @@ public:
     using reference = value_type&;
     using const_reference = const value_type&;
 
-    class iterator final {
+    template<typename T, typename It>
+    class raw_iterator final {
     public:
         using iterator_category = std::forward_iterator_tag;
-        using difference_type = difference_type;
-        using value_type = value_type;
+        using difference_type  = difference_type;
+        using value_type = T;
         using pointer = const value_type*;
         using reference = const value_type&;
+        using table_iterator = It;
 
-        using table_iterator = typename detail::hash_table<value_type, hasher>::iterator;
-
-        iterator(table_iterator it) : m_iterator{it} {
+        raw_iterator(table_iterator it) : m_iterator{it} {
 
         }
 
@@ -42,75 +42,31 @@ public:
             return &m_iterator->key;
         }
 
-        auto operator++() noexcept -> iterator& {
+        auto operator++() noexcept -> raw_iterator& {
             m_iterator++;
             return *this;
         }
 
-        auto operator++(int) noexcept -> iterator {
+        auto operator++(int) noexcept -> raw_iterator {
             auto temp = *this;
             ++(*this);
             return temp;
         }
 
-        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator==(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_iterator == b.m_iterator;
         }
 
-        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator!=(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_iterator != b.m_iterator;
         }
+
     private:
         table_iterator m_iterator;
     };
 
-    class const_iterator final {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type = difference_type;
-        using value_type = value_type;
-        using pointer = value_type*;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-
-        using table_iterator = typename detail::hash_table<value_type, hasher>::const_iterator;
-
-        const_iterator(table_iterator it) : m_iterator{it} {
-
-        }
-
-        auto operator*() const noexcept -> const_reference {
-            return m_iterator->key;
-        }
-
-        auto operator->() const noexcept -> pointer {
-            return &m_iterator->key;
-        }
-
-        auto operator++() noexcept -> iterator& {
-            m_iterator++;
-            return *this;
-        }
-
-        auto operator++(int) noexcept -> iterator {
-            auto temp = *this;
-            ++(*this);
-            return temp;
-        }
-
-        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
-            return a.m_iterator == b.m_iterator;
-        }
-
-        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
-            return a.m_iterator != b.m_iterator;
-        }
-    private:
-        table_iterator m_iterator;
-    };
-
-    using iterator = iterator;
-    using const_iterator = const_iterator;
+    using iterator = raw_iterator<value_type, typename detail::hash_table<value_type, hasher>::iterator>;
+    using const_iterator = raw_iterator<value_type, typename detail::hash_table<value_type, hasher>::const_iterator>;
 
     auto add(const_reference key) noexcept -> bool {
         return m_hash_table.add(key);

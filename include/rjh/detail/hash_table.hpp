@@ -33,15 +33,16 @@ public:
         size_type distance{0};
     };
 
-    class iterator final {
+    template<typename T>
+    class raw_iterator final {
     public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type = difference_type;
-        using value_type = bucket;
+        using value_type = T;
         using pointer = value_type*;
         using reference = value_type&;
 
-        iterator(pointer ptr, pointer end)
+        raw_iterator(pointer ptr, pointer end)
             : m_pointer{ptr}
             , m_end{end} {
 
@@ -55,14 +56,14 @@ public:
             return m_pointer;
         }
 
-        auto operator++() noexcept -> iterator& {
+        auto operator++() noexcept -> raw_iterator& {
             do {
                 m_pointer++;
             } while (m_pointer != m_end && !m_pointer->occupied);
             return *this;
         }
 
-        auto operator++(int) noexcept -> iterator {
+        auto operator++(int) noexcept -> raw_iterator {
             auto temp = *this;
             do {
                 ++(*this);
@@ -70,70 +71,20 @@ public:
             return temp;
         }
 
-        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator==(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_pointer == b.m_pointer;
         }
 
-        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+        friend auto operator!=(const raw_iterator& a, const raw_iterator& b) noexcept -> bool {
             return a.m_pointer != b.m_pointer;
         }
+
     private:
-        pointer m_pointer;
-        pointer m_end;
+        pointer m_pointer, m_end;
     };
 
-    class const_iterator final {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type = difference_type;
-        using value_type = bucket;
-        using pointer = value_type*;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-
-        const_iterator(pointer ptr, pointer end)
-            : m_pointer{ptr}
-            , m_end{end} {
-
-        }
-
-        auto operator*() const noexcept -> const_reference {
-            return *m_pointer;
-        }
-
-        auto operator->() const noexcept -> pointer {
-            return m_pointer;
-        }
-
-        auto operator++() noexcept -> iterator& {
-            do {
-                m_pointer++;
-            } while (m_pointer != m_end && !m_pointer->occupied);
-            return *this;
-        }
-
-        auto operator++(int) noexcept -> iterator {
-            auto temp = *this;
-            do {
-                ++(*this);
-            } while (m_pointer != m_end && !m_pointer->occupied);
-            return temp;
-        }
-
-        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
-            return a.m_pointer == b.m_pointer;
-        }
-
-        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
-            return a.m_pointer != b.m_pointer;
-        }
-    private:
-        pointer m_pointer;
-        pointer m_end;
-    };
-
-    using iterator = iterator;
-    using const_iterator = const_iterator;
+    using iterator = raw_iterator<bucket>;
+    using const_iterator = raw_iterator<const bucket>;
 
     hash_table() : m_size{0}, m_buckets{s_initial_capacity} {
 
@@ -232,7 +183,7 @@ public:
         return false;
     }
 
-    auto contains(hash_type hash) const noexcept -> bool {
+    [[nodiscard]] auto contains(hash_type hash) const noexcept -> bool {
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
@@ -391,6 +342,6 @@ private:
     size_type m_size;
     std::vector<bucket> m_buckets;
 };
-} // namespace rjh
+} // namespace rjh::detail
 
 #endif // #ifndef RJH_HASH_TABLE_HPP
