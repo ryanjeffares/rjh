@@ -391,6 +391,6 @@ private:
     size_type m_size;
     std::vector<bucket> m_buckets;
 };
-}
+} // namespace rjh
 
 #endif // #ifndef RJH_HASH_TABLE_HPP

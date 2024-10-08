@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <iostream>
 #include <optional>
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ TEST_CASE("rjh::unordered_map<int, int>", "[rjh::unordered_map tests]") {
     for (auto i = 0; i < 10; i++) {
         const auto f = map.find(i);
         REQUIRE(f.has_value());
-        REQUIRE(*f == i * 2);
+        REQUIRE(f == i * 2);
     }
 
     REQUIRE(!map.find(20).has_value());
@@ -43,6 +44,10 @@ TEST_CASE("rjh::unordered_map<int, int>", "[rjh::unordered_map tests]") {
     REQUIRE(map[9] == 9);
     REQUIRE(map[20] == 20);
     REQUIRE(map[40] == 0);
+
+    for (auto& [k, v] : map) {
+        std::cout << k << ' ' << v << std::endl;
+    }
 }
 
 TEST_CASE("rjh::unordered_map<std::string, std::optional<int>>", "[rjh::unordered_map tests]") {

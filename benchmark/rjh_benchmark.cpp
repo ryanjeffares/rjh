@@ -54,6 +54,7 @@ BENCHMARK(benchmark_rjh_unordered_set_adding_strings);
 static auto benchmark_std_unordered_map_adding_ints(benchmark::State& state) -> void {
     for (auto _ : state) {
         std::unordered_map<int, int> map;
+        auto it = map.begin();
         for (auto i = 0; i < 1000000; i++) {
             map.emplace(i, i * 2);
         }

@@ -3,27 +3,83 @@
 
 #include "detail/hash_table.hpp"
 
+#include <cstddef>
 #include <functional>
+#include <iterator>
 #include <utility>
 
 namespace rjh {
-template<typename First, typename Second>
-struct pair {
-    First first;
-    Second second;
-};
+template<typename T>
+using ref = std::reference_wrapper<T>;
 
 template<typename Key, typename Value, typename Hash = std::hash<Key>>
 class unordered_map {
 public:
     using key_type = Key;
     using mapped_type = Value;
-    using value_type = pair<key_type, mapped_type>;
+    using value_type = std::pair<const key_type, mapped_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using hasher = Hash;
     using reference = value_type&;
     using const_reference = const value_type&;
+
+private:
+    struct pair_hash {
+        [[nodiscard]]
+        auto operator()(const value_type& pair) const noexcept -> std::size_t {
+            return hasher{}(pair.first);
+        }
+    };
+
+public:
+    class iterator final {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type  = difference_type;
+        using value_type = value_type;
+        using pointer = value_type*;
+        using reference  = value_type&;
+
+    private:
+        using table_iterator = typename detail::hash_table<value_type, pair_hash>::iterator;
+
+    public:
+        iterator(table_iterator it) : m_iterator{it} {
+
+        }
+
+        auto operator*() const noexcept -> reference {
+            return m_iterator->key;
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return &m_iterator->key;
+        }
+
+        auto operator++() noexcept -> iterator& {
+            m_iterator++;
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> iterator {
+            auto temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        friend auto operator==(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator == b.m_iterator;
+        }
+
+        friend auto operator!=(const iterator& a, const iterator& b) noexcept -> bool {
+            return a.m_iterator != b.m_iterator;
+        }
+    private:
+        table_iterator m_iterator;
+    };
+
+    using iterator = iterator;
 
     auto add(const_reference pair) noexcept -> bool {
         return m_hash_table.add(pair);
@@ -55,7 +111,7 @@ public:
         return m_hash_table.remove(hasher{}(key));
     }
 
-    auto find(const key_type& key) noexcept -> std::optional<std::reference_wrapper<mapped_type>> {
+    auto find(const key_type& key) noexcept -> std::optional<ref<mapped_type>> {
         auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
@@ -64,7 +120,7 @@ public:
         }
     }
 
-    auto find(const key_type& key) const noexcept -> std::optional<std::reference_wrapper<const mapped_type>> {
+    auto find(const key_type& key) const noexcept -> std::optional<ref<const mapped_type>> {
         auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
@@ -109,15 +165,32 @@ public:
         return m_hash_table.size();
     }
 
-private:
-    struct hash {
-        [[nodiscard]]
-        auto operator()(const value_type& pair) const noexcept -> std::size_t {
-            return hasher{}(pair.first);
-        }
-    };
+    auto begin() noexcept -> iterator {
+        return m_hash_table.begin();
+    }
 
-    detail::hash_table<value_type, hash> m_hash_table;
+//    auto begin() const noexcept -> const_iterator {
+//        return m_hash_table.begin();
+//    }
+//
+//    auto cbegin() const noexcept -> const_iterator {
+//        return m_hash_table.cbegin();
+//    }
+
+    auto end() noexcept -> iterator {
+        return m_hash_table.end();
+    }
+
+//    auto end() const noexcept -> const_iterator {
+//        return m_hash_table.end();
+//    }
+//
+//    auto cend() const noexcept -> const_iterator {
+//        return m_hash_table.cend();
+//    }
+
+private:
+    detail::hash_table<value_type, pair_hash> m_hash_table;
 }; // class unordered_map
 } // namespace rjh
 

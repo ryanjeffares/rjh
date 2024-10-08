@@ -5,6 +5,8 @@
 
 #include <cstddef>
 #include <functional>
+#include <iterator>
+#include <utility>
 
 namespace rjh {
 template<typename Key, typename Hash = std::hash<Key>>
@@ -23,8 +25,8 @@ public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type = difference_type;
         using value_type = value_type;
-        using pointer = value_type*;
-        using reference = value_type&;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
         using table_iterator = typename detail::hash_table<value_type, hasher>::iterator;
 
@@ -156,8 +158,24 @@ public:
         return m_hash_table.begin();
     }
 
+    auto begin() const noexcept -> const_iterator {
+        return m_hash_table.begin();
+    }
+
+    auto cbegin() const noexcept -> const_iterator {
+        return m_hash_table.cbegin();
+    }
+
     auto end() noexcept -> iterator {
         return m_hash_table.end();
+    }
+
+    auto end() const noexcept -> const_iterator {
+        return m_hash_table.end();
+    }
+
+    auto cend() const noexcept -> const_iterator {
+        return m_hash_table.cend();
     }
 
 private:
