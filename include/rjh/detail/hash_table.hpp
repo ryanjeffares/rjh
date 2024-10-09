@@ -15,7 +15,19 @@ concept Hasher = requires(T value, K key) {
     { value(key) } -> std::same_as<std::size_t>;
 };
 
-template<typename Key, Hasher<Key> Hash = std::hash<Key>>
+template<typename...>
+using void_type = void;
+
+template<typename T, typename, typename = void>
+struct is_transparent : std::false_type {};
+
+template<typename T, typename U>
+struct is_transparent<T, U, void_type<typename T::is_transparent>> : std::true_type {};
+
+template<typename T, typename U>
+constexpr bool is_transparent_v = is_transparent<T, U>::value;
+
+template<typename Key, Hasher<Key> Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
 class hash_table final {
 public:
     using value_type = Key;
@@ -23,6 +35,7 @@ public:
     using difference_type = std::ptrdiff_t;
     using hasher = Hash;
     using hash_type = std::size_t;
+    using key_equal = KeyEqual;
     using reference = value_type&;
     using const_reference = const value_type&;
 
@@ -97,93 +110,38 @@ public:
     hash_table& operator=(const hash_table&) = default;
     hash_table& operator=(hash_table&&) = default;
 
-    auto add(const_reference key) noexcept -> bool {
-        const auto hash = hasher{}(key);
-        auto index = hash % capacity();
+    auto insert(const_reference key) noexcept -> std::pair<iterator, bool> {
+        if (find(key) != end()) {
+            return {end(), false};
+        }
 
-        bucket entry {
+        const auto hash = hasher{}(key);
+        return insert({
             .key = key,
             .hash = hash,
             .occupied = true,
-        };
-
-        while (m_buckets[index].occupied) {
-            auto& old = m_buckets[index];
-            if (entry.hash == old.hash) {
-                return false;
-            }
-
-            if (entry.distance > old.distance) {
-                std::swap(entry, old);
-            }
-
-            entry.distance++;
-            index = (index + 1) % capacity();
-        }
-
-        m_buckets[index] = std::move(entry);
-        m_size++;
-        check_load();
-
-        return true;
+        });
     }
 
-    auto insert(value_type key) noexcept -> void {
-        const auto hash = hasher{}(key);
-        auto index = hash % capacity();
+    auto insert(value_type&& key) noexcept -> std::pair<iterator, bool> {
+        if (find(key) != end()) {
+            return {end(), false};
+        }
 
-        bucket entry {
+        const auto hash = hasher{}(key);
+        return insert({
             .key = std::move(key),
             .hash = hash,
             .occupied = true,
-        };
-
-        while (m_buckets[index].occupied) {
-            auto& old = m_buckets[index];
-            if (entry.hash == old.hash) {
-                std::swap(entry, old);
-                return;
-            }
-
-            if (entry.distance > old.distance) {
-                std::swap(entry, old);
-            }
-
-            entry.distance++;
-            index = (index + 1) % capacity();
-        }
-
-        m_buckets[index] = std::move(entry);
-        m_size++;
-        check_load();
+        });
     }
 
-    auto remove(hash_type hash) noexcept -> bool {
-        auto index = hash % capacity();
-
-        while (m_buckets[index].occupied) {
-            auto& entry = m_buckets[index];
-
-            if (entry.hash == hash) {
-                entry = {};
-                index = (index + 1) % capacity();
-
-                while (m_buckets[index].occupied && m_buckets[index].distance > 0) {
-                    std::swap(entry, m_buckets[index]);
-                    index = (index + 1) % capacity();
-                }
-
-                m_size--;
-                return true;
-            }
-
-            index = (index + 1) % capacity();
-        }
-
-        return false;
+    template<typename Pair> requires std::constructible_from<value_type, Pair&&>
+    auto insert(Pair&& pair) noexcept -> std::pair<iterator, bool> {
+        return insert(std::forward<Pair>(pair));
     }
 
-    [[nodiscard]] auto contains(hash_type hash) const noexcept -> bool {
+    auto contains(hash_type hash) const noexcept -> bool {
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
@@ -197,32 +155,121 @@ public:
         return false;
     }
 
-    auto find(hash_type hash) noexcept -> std::optional<std::reference_wrapper<value_type>> {
+    auto find(const_reference key) noexcept -> iterator {
+        const auto hash = hasher{}(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
-            auto& entry = m_buckets[index];
-            if (entry.hash == hash) {
-                return m_buckets[index].key;
+            const auto& entry = m_buckets[index];
+            if (key_equal{}(entry.key, key)) {
+                return iterator{
+                    m_buckets.begin().operator->() + index,
+                    m_buckets.end().operator->()
+                };
             }
             index = (index + 1) % capacity();
         }
 
-        return {};
+        return end();
     }
 
-    auto find(hash_type hash) const noexcept -> std::optional<std::reference_wrapper<const value_type >> {
+    auto find(const_reference key) const noexcept -> const_iterator {
+        const auto hash = hasher{}(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
-            auto& entry = m_buckets[index];
-            if (entry.hash == hash) {
-                return m_buckets[index].key;
+            const auto& entry = m_buckets[index];
+            if (key_equal{}(entry.key, key.key)) {
+                return const_iterator{
+                    m_buckets.begin().operator->() + index,
+                    m_buckets.end().operator->()
+                };
             }
             index = (index + 1) % capacity();
         }
 
-        return {};
+        return end();
+    }
+
+    template<typename K> requires is_transparent_v<key_equal, K> && is_transparent_v<hasher, K>
+    auto find(const K& key) noexcept -> iterator {
+        const auto hash = m_hasher(key);
+        auto index = hash % capacity();
+
+        while (m_buckets[index].occupied) {
+            const auto& entry = m_buckets[index];
+            if (m_key_equal(entry, key)) {
+                return iterator{
+                    m_buckets.begin().operator->() + index,
+                    m_buckets.end().operator->(),
+                };
+            }
+            index = (index + 1) % capacity();
+        }
+
+        return end();
+    }
+
+    template<typename K> requires is_transparent_v<key_equal, K> && is_transparent_v<hasher, K>
+    auto find(const K& key) const noexcept -> const_iterator {
+        const auto hash = m_hasher(key);
+        auto index = hash % capacity();
+
+        while (m_buckets[index].occupied) {
+            const auto& entry = m_buckets[index];
+            if (m_key_equal(entry, key)) {
+                return const_iterator{
+                    m_buckets.begin().operator->() + index,
+                    m_buckets.end().operator->(),
+                };
+            }
+            index = (index + 1) % capacity();
+        }
+
+        return end();
+    }
+
+    auto remove(const_reference key) noexcept -> bool {
+        auto index = m_hasher(key) % capacity();
+
+        while (m_buckets[index].occupied) {
+            auto& entry = m_buckets[index];
+            if (m_key_equal(entry.key, key)) {
+                entry = {};
+                index = (index + 1) % capacity();
+                while (m_buckets[index].occupied && m_buckets[index].distance > 0) {
+                    std::swap(entry, m_buckets[index]);
+                    index = (index + 1) % capacity();
+                }
+                m_size--;
+                return true;
+            }
+            index = (index + 1) % capacity();
+        }
+
+        return false;
+    }
+
+    template<typename K> requires is_transparent_v<hasher, K> && is_transparent_v<key_equal, K>
+    auto remove(K&& key) noexcept -> bool {
+        auto index = m_hasher(key) % capacity();
+
+        while (m_buckets[index].occupied) {
+            auto& entry = m_buckets[index];
+            if (m_key_equal(entry.key, key)) {
+                entry = {};
+                index = (index + 1) % capacity();
+                while (m_buckets[index].occupied && m_buckets[index].distance > 0) {
+                    std::swap(entry, m_buckets[index]);
+                    index = (index + 1) % capacity();
+                }
+                m_size--;
+                return true;
+            }
+            index = (index + 1) % capacity();
+        }
+
+        return false;
     }
 
     auto clear() noexcept -> void {
@@ -299,6 +346,29 @@ public:
     }
 
 private:
+    auto insert(bucket&& entry) noexcept -> std::pair<iterator, bool> {
+        check_load();
+        auto index = entry.hash % capacity();
+
+        while (m_buckets[index].occupied) {
+            auto& old = m_buckets[index];
+            if (entry.hash == old.hash) {
+                return {end(), false};
+            }
+
+            if (entry.distance > old.distance) {
+                std::swap(entry, old);
+            }
+
+            entry.distance++;
+            index = (index + 1) % capacity();
+        }
+
+        m_buckets[index] = std::move(entry);
+        m_size++;
+        return {iterator{m_buckets.data() + index, m_buckets.end().operator->()}, true};
+    }
+
     auto check_load() noexcept -> void {
         if (static_cast<float>(size()) / static_cast<float>(capacity()) >= s_grow_factor) {
             grow_and_rehash();
@@ -341,6 +411,9 @@ private:
 
     size_type m_size;
     std::vector<bucket> m_buckets;
+
+    hasher m_hasher;
+    key_equal m_key_equal;
 };
 } // namespace rjh::detail
 

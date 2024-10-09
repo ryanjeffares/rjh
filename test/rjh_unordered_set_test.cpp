@@ -72,6 +72,10 @@ TEST_CASE("rjh::unordered_set<custom_type>", "[rjh::unordered_set tests]") {
     struct custom_type {
         std::string name;
         std::vector<std::string> data;
+
+        auto operator==(const custom_type& other) const noexcept -> bool {
+            return name == other.name;
+        }
     };
 
     struct custom_type_hasher {

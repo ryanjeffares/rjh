@@ -27,8 +27,15 @@ public:
 private:
     struct pair_hash {
         [[nodiscard]]
-        auto operator()(const value_type& pair) const noexcept -> std::size_t {
+        auto operator()(const_reference pair) const noexcept -> std::size_t {
             return hasher{}(pair.first);
+        }
+    };
+
+    struct pair_key_equal {
+        [[nodiscard]]
+        auto operator()(const_reference first, const_reference second) const noexcept -> bool {
+            return first.first == second.first;
         }
     };
 
@@ -120,14 +127,17 @@ public:
 
     template<typename K, typename V>
     auto insert(K&& key, V&& value) noexcept -> void {
-        insert({std::forward<K>(key), std::forward<V>(value)});
+        insert(value_type{
+            .first = std::forward<K>(key),
+            .second = std::forward<V>(value)
+        });
     }
 
     auto remove(const key_type& key) noexcept -> bool {
         return m_hash_table.remove(hasher{}(key));
     }
 
-    auto find(const key_type& key) noexcept -> std::optional<ref<mapped_type>> {
+    [[nodiscard]] auto find(const key_type& key) noexcept -> std::optional<ref<mapped_type>> {
         auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
@@ -136,7 +146,7 @@ public:
         }
     }
 
-    auto find(const key_type& key) const noexcept -> std::optional<ref<const mapped_type>> {
+    [[nodiscard]] auto find(const key_type& key) const noexcept -> std::optional<ref<const mapped_type>> {
         auto entry = m_hash_table.find(hasher{}(key));
         if (entry) {
             return entry->get().second;
@@ -145,7 +155,7 @@ public:
         }
     }
 
-    auto operator[](const key_type& key) noexcept -> mapped_type& {
+    [[nodiscard]] auto operator[](const key_type& key) noexcept -> mapped_type& {
         if (!contains(key)) {
             insert(key, mapped_type{});
         }
@@ -153,7 +163,7 @@ public:
         return find(key)->get();
     }
 
-    auto operator[](const key_type& key) const noexcept -> const mapped_type& {
+    [[nodiscard]] auto operator[](const key_type& key) const noexcept -> const mapped_type& {
         if (!contains(key)) {
             insert(key, mapped_type{});
         }
@@ -165,48 +175,48 @@ public:
         m_hash_table.clear();
     }
 
-    auto contains(const Key& key) const noexcept -> bool {
+    [[nodiscard]] auto contains(const Key& key) const noexcept -> bool {
         return m_hash_table.contains(hasher{}(key));
     }
 
-    auto empty() const noexcept -> bool {
+    [[nodiscard]] auto empty() const noexcept -> bool {
         return m_hash_table.empty();
     }
 
-    auto capacity() const noexcept -> size_type {
+    [[nodiscard]] auto capacity() const noexcept -> size_type {
         return m_hash_table.capacity();
     }
 
-    auto size() const noexcept -> size_type {
+    [[nodiscard]] auto size() const noexcept -> size_type {
         return m_hash_table.size();
     }
 
-    auto begin() noexcept -> iterator {
+    [[nodiscard]] auto begin() noexcept -> iterator {
         return m_hash_table.begin();
     }
 
-    auto begin() const noexcept -> const_iterator {
+    [[nodiscard]] auto begin() const noexcept -> const_iterator {
         return m_hash_table.begin();
     }
 
-    auto cbegin() const noexcept -> const_iterator {
+    [[nodiscard]] auto cbegin() const noexcept -> const_iterator {
         return m_hash_table.cbegin();
     }
 
-    auto end() noexcept -> iterator {
+    [[nodiscard]] auto end() noexcept -> iterator {
         return m_hash_table.end();
     }
 
-    auto end() const noexcept -> const_iterator {
+    [[nodiscard]] auto end() const noexcept -> const_iterator {
         return m_hash_table.end();
     }
 
-    auto cend() const noexcept -> const_iterator {
+    [[nodiscard]] auto cend() const noexcept -> const_iterator {
         return m_hash_table.cend();
     }
 
 private:
-    detail::hash_table<value_type, pair_hash> m_hash_table;
+    detail::hash_table<value_type, pair_hash, pair_key_equal> m_hash_table;
 }; // class unordered_map
 } // namespace rjh
 
