@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ryan Jeffares (ryan.jeffares.business@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright
+ * notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #ifndef RJH_UNORDERED_SET_HPP
 #define RJH_UNORDERED_SET_HPP
 
@@ -68,34 +83,8 @@ public:
     using iterator = raw_iterator<value_type, typename detail::hash_table<value_type, hasher>::iterator>;
     using const_iterator = raw_iterator<value_type, typename detail::hash_table<value_type, hasher>::const_iterator>;
 
-    auto add(const_reference key) noexcept -> bool {
-        return m_hash_table.add(key);
-    }
-
-    template<typename K>
-    auto add(const K& key) noexcept -> bool {
-        return add(key);
-    }
-
-    auto insert(value_type key) noexcept -> void {
-        m_hash_table.insert(std::move(key));
-    }
-
-    template<typename K>
-    auto insert(K&& key) noexcept -> void {
-        insert(value_type{std::forward<K>(key)});
-    }
-
-    auto remove(const_reference key) noexcept -> bool {
-        return m_hash_table.remove(hasher{}(key));
-    }
-
     auto clear() noexcept -> void {
         m_hash_table.clear();
-    }
-
-    auto contains(const_reference key) const noexcept -> bool {
-        return m_hash_table.contains(hasher{}(key));
     }
 
     auto empty() const noexcept -> bool {

@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ryan Jeffares (ryan.jeffares.business@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright
+ * notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #ifndef RJH_UNORDERED_MAP_HPP
 #define RJH_UNORDERED_MAP_HPP
 
@@ -9,10 +24,12 @@
 #include <utility>
 
 namespace rjh {
-template<typename T>
-using ref = std::reference_wrapper<T>;
-
-template<typename Key, typename Value, typename Hash = std::hash<Key>>
+template<
+    typename Key,
+    typename Value,
+    concepts::hash_function_object<Key> Hash = std::hash<Key>,
+    concepts::key_equal_function_object<Key> KeyEqual = std::equal_to<Key>
+>
 class unordered_map {
 public:
     using key_type = Key;
@@ -21,25 +38,80 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using hasher = Hash;
+    using key_equal = KeyEqual;
     using reference = value_type&;
     using const_reference = const value_type&;
 
+    static constexpr bool transparent_hash_eq = concepts::is_transparent<hasher> && concepts::is_transparent<key_equal>;
+
 private:
     struct pair_hash {
+        using is_transparent = void;
+
         [[nodiscard]]
-        auto operator()(const_reference pair) const noexcept -> std::size_t {
+        auto operator()(const_reference pair) const noexcept -> size_type {
             return hasher{}(pair.first);
+        }
+
+        [[nodiscard]]
+        auto operator()(const key_type& key) const noexcept -> size_type {
+            return hasher{}(key);
+        }
+
+        template<typename K>
+        [[nodiscard]]
+        auto operator()(const K& key) const noexcept -> size_type {
+            return hasher{}(key);
         }
     };
 
     struct pair_key_equal {
+        using is_transparent = void;
+
         [[nodiscard]]
-        auto operator()(const_reference first, const_reference second) const noexcept -> bool {
-            return first.first == second.first;
+        auto operator()(const_reference a, const_reference b) const noexcept -> bool {
+            return key_equal{}(a.first, b.first);
+        }
+
+        [[nodiscard]]
+        auto operator()(const_reference a, const key_type& b) const noexcept -> bool {
+            return key_equal{}(a.first, b);
+        }
+
+        [[nodiscard]]
+        auto operator()(const key_type& a, const_reference b) const noexcept -> bool {
+            return key_equal{}(a, b.first);
+        }
+
+        template<typename K>
+        [[nodiscard]]
+        auto operator()(const_reference a, const K& b) const noexcept -> bool {
+            return key_equal{}(a.first, b);
+        }
+
+        template<typename K>
+        [[nodiscard]]
+        auto operator()(const K& a, const_reference b) const noexcept -> bool {
+            return key_equal{}(a, b.first);
+        }
+
+        template<typename K>
+        [[nodiscard]]
+        auto operator()(const key_type& a, const K& b) const noexcept -> bool {
+            return key_equal{}(a, b);
+        }
+
+        template<typename K>
+        [[nodiscard]]
+        auto operator()(const K& a, const key_type& b) const noexcept -> bool {
+            return key_equal{}(a, b);
         }
     };
 
+    using hash_table = detail::hash_table<value_type, pair_hash, pair_key_equal>;
+
 public:
+
     template<typename T, typename It>
     class raw_iterator final {
     public:
@@ -101,82 +173,47 @@ public:
         table_iterator m_iterator;
     };
 
-    using iterator = raw_iterator<value_type, typename detail::hash_table<value_type, pair_hash>::iterator>;
-    using const_iterator = raw_iterator<const value_type, typename detail::hash_table<value_type, pair_hash>::const_iterator>;
+    using iterator = raw_iterator<value_type, typename hash_table::iterator>;
+    using const_iterator = raw_iterator<const value_type, typename hash_table::const_iterator>;
 
-    auto add(const_reference pair) noexcept -> bool {
-        return m_hash_table.add(pair);
+    auto insert(const_reference pair) noexcept -> std::pair<iterator, bool> {
+        return m_hash_table.insert(pair);
     }
 
-    auto add(const key_type& key, const value_type& value) noexcept -> bool {
-        return add({key, value});
+    auto insert(value_type&& pair) noexcept -> std::pair<iterator, bool> {
+        return m_hash_table.insert(std::move(pair));
     }
 
-    template<typename K, typename V>
-    auto add(const K& key, const V& value) noexcept -> bool {
-        return add({key, value});
+    template<typename Pair> requires std::constructible_from<value_type, Pair&&>
+    auto insert(Pair&& pair) noexcept -> std::pair<iterator, bool> {
+        return m_hash_table.insert(std::forward<Pair>(pair));
     }
 
-    auto insert(value_type pair) noexcept -> void {
-        m_hash_table.insert(std::move(pair));
+    auto find(const key_type& key) noexcept -> iterator {
+        return m_hash_table.find(key);
     }
 
-    auto insert(key_type key, mapped_type value) noexcept -> void {
-        insert({std::move(key), std::move(value)});
+    auto find(const key_type& key) const noexcept -> const_iterator {
+        return m_hash_table.find(key);
     }
 
-    template<typename K, typename V>
-    auto insert(K&& key, V&& value) noexcept -> void {
-        insert(value_type{
-            .first = std::forward<K>(key),
-            .second = std::forward<V>(value)
-        });
+    template<typename K> requires transparent_hash_eq
+    auto find(const K& key) noexcept -> iterator {
+        return m_hash_table.find(key);
     }
 
-    auto remove(const key_type& key) noexcept -> bool {
-        return m_hash_table.remove(hasher{}(key));
+    template<typename K> requires transparent_hash_eq
+    auto find(const K& key) const noexcept -> iterator {
+        return m_hash_table.find(key);
     }
 
-    [[nodiscard]] auto find(const key_type& key) noexcept -> std::optional<ref<mapped_type>> {
-        auto entry = m_hash_table.find(hasher{}(key));
-        if (entry) {
-            return entry->get().second;
-        } else {
-            return {};
-        }
+    auto contains(const key_type& key) const noexcept -> bool {
+        return m_hash_table.contains(key);
     }
 
-    [[nodiscard]] auto find(const key_type& key) const noexcept -> std::optional<ref<const mapped_type>> {
-        auto entry = m_hash_table.find(hasher{}(key));
-        if (entry) {
-            return entry->get().second;
-        } else {
-            return {};
-        }
-    }
-
-    [[nodiscard]] auto operator[](const key_type& key) noexcept -> mapped_type& {
-        if (!contains(key)) {
-            insert(key, mapped_type{});
-        }
-
-        return find(key)->get();
-    }
-
-    [[nodiscard]] auto operator[](const key_type& key) const noexcept -> const mapped_type& {
-        if (!contains(key)) {
-            insert(key, mapped_type{});
-        }
-
-        return find(key)->get();
-    }
-
-    auto clear() noexcept -> void {
-        m_hash_table.clear();
-    }
-
-    [[nodiscard]] auto contains(const Key& key) const noexcept -> bool {
-        return m_hash_table.contains(hasher{}(key));
+    template<typename K> requires transparent_hash_eq
+    auto contains(const K& key) const noexcept -> bool {
+        return m_hash_table.contains(key);
     }
 
     [[nodiscard]] auto empty() const noexcept -> bool {
@@ -216,7 +253,7 @@ public:
     }
 
 private:
-    detail::hash_table<value_type, pair_hash, pair_key_equal> m_hash_table;
+    hash_table m_hash_table;
 }; // class unordered_map
 } // namespace rjh
 

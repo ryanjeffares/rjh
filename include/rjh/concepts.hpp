@@ -13,5 +13,27 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "rjh/unordered_map.hpp"
-#include "rjh/unordered_set.hpp"
+#ifndef RJH_CONCEPTS_HPP
+#define RJH_CONCEPTS_HPP
+
+#include <concepts>
+#include <type_traits>
+
+namespace rjh::concepts {
+template<typename T, typename K>
+concept hash_function_object = requires(T object, K key) {
+    { object(key) } -> std::same_as<std::size_t>;
+};
+
+template<typename T, typename K>
+concept key_equal_function_object = requires(T object, K key) {
+    { object(key, key) } -> std::same_as<bool>;
+};
+
+template<typename T>
+concept is_transparent = requires {
+    typename T::is_transparent;
+};
+} // namespace rjh::concepts
+
+#endif // #ifndef RJH_CONCEPTS_HPP

@@ -22,7 +22,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-set(RJH_OPTIONS -Wall -Wextra -Wpedantic -Werror)
+set(RJH_OPTIONS -Wall -Wextra -Wpedantic -Werror -Wconversion)
 
 add_library(rjh STATIC src/rjh.cpp)
 target_include_directories(rjh PRIVATE include)

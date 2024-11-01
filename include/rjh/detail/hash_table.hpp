@@ -1,5 +1,22 @@
+/*
+ * Copyright 2024 Ryan Jeffares (ryan.jeffares.business@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright
+ * notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #ifndef RJH_HASH_TABLE_HPP
 #define RJH_HASH_TABLE_HPP
+
+#include "../concepts.hpp"
 
 #include <algorithm>
 #include <concepts>
@@ -10,24 +27,11 @@
 #include <vector>
 
 namespace rjh::detail {
-template<typename T, typename K>
-concept Hasher = requires(T value, K key) {
-    { value(key) } -> std::same_as<std::size_t>;
-};
-
-template<typename...>
-using void_type = void;
-
-template<typename T, typename, typename = void>
-struct is_transparent : std::false_type {};
-
-template<typename T, typename U>
-struct is_transparent<T, U, void_type<typename T::is_transparent>> : std::true_type {};
-
-template<typename T, typename U>
-constexpr bool is_transparent_v = is_transparent<T, U>::value;
-
-template<typename Key, Hasher<Key> Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
+template<
+    typename Key,
+    concepts::hash_function_object<Key> Hash = std::hash<Key>,
+    concepts::key_equal_function_object<Key> KeyEqual = std::equal_to<Key>
+>
 class hash_table final {
 public:
     using value_type = Key;
@@ -115,7 +119,7 @@ public:
             return {end(), false};
         }
 
-        const auto hash = hasher{}(key);
+        const auto hash = m_hasher(key);
         return insert({
             .key = key,
             .hash = hash,
@@ -128,7 +132,7 @@ public:
             return {end(), false};
         }
 
-        const auto hash = hasher{}(key);
+        const auto hash = m_hasher(key);
         return insert({
             .key = std::move(key),
             .hash = hash,
@@ -136,32 +140,18 @@ public:
         });
     }
 
-    template<typename Pair> requires std::constructible_from<value_type, Pair&&>
-    auto insert(Pair&& pair) noexcept -> std::pair<iterator, bool> {
-        return insert(std::forward<Pair>(pair));
-    }
-
-    auto contains(hash_type hash) const noexcept -> bool {
-        auto index = hash % capacity();
-
-        while (m_buckets[index].occupied) {
-            const auto& entry = m_buckets[index];
-            if (entry.hash == hash) {
-                return true;
-            }
-            index = (index + 1) % capacity();
-        }
-
-        return false;
+    template<typename K> requires std::constructible_from<value_type, K&&>
+    auto insert(K&& key) noexcept -> std::pair<iterator, bool> {
+        return insert(std::forward<K>(key));
     }
 
     auto find(const_reference key) noexcept -> iterator {
-        const auto hash = hasher{}(key);
+        const auto hash = m_hasher(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
             const auto& entry = m_buckets[index];
-            if (key_equal{}(entry.key, key)) {
+            if (m_key_equal(entry.key, key)) {
                 return iterator{
                     m_buckets.begin().operator->() + index,
                     m_buckets.end().operator->()
@@ -174,12 +164,12 @@ public:
     }
 
     auto find(const_reference key) const noexcept -> const_iterator {
-        const auto hash = hasher{}(key);
+        const auto hash = m_hasher(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
             const auto& entry = m_buckets[index];
-            if (key_equal{}(entry.key, key.key)) {
+            if (m_key_equal(entry.key, key.key)) {
                 return const_iterator{
                     m_buckets.begin().operator->() + index,
                     m_buckets.end().operator->()
@@ -191,14 +181,14 @@ public:
         return end();
     }
 
-    template<typename K> requires is_transparent_v<key_equal, K> && is_transparent_v<hasher, K>
+    template<typename K> requires concepts::is_transparent<hasher> && concepts::is_transparent<key_equal>
     auto find(const K& key) noexcept -> iterator {
         const auto hash = m_hasher(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
             const auto& entry = m_buckets[index];
-            if (m_key_equal(entry, key)) {
+            if (m_key_equal(entry.key, key)) {
                 return iterator{
                     m_buckets.begin().operator->() + index,
                     m_buckets.end().operator->(),
@@ -210,14 +200,14 @@ public:
         return end();
     }
 
-    template<typename K> requires is_transparent_v<key_equal, K> && is_transparent_v<hasher, K>
+    template<typename K> requires concepts::is_transparent<hasher> && concepts::is_transparent<key_equal>
     auto find(const K& key) const noexcept -> const_iterator {
         const auto hash = m_hasher(key);
         auto index = hash % capacity();
 
         while (m_buckets[index].occupied) {
             const auto& entry = m_buckets[index];
-            if (m_key_equal(entry, key)) {
+            if (m_key_equal(entry.key, key)) {
                 return const_iterator{
                     m_buckets.begin().operator->() + index,
                     m_buckets.end().operator->(),
@@ -227,6 +217,15 @@ public:
         }
 
         return end();
+    }
+
+    auto contains(const_reference key) const noexcept -> bool {
+        return find(key) != end();
+    }
+
+    template<typename K> requires concepts::is_transparent<hasher> && concepts::is_transparent<key_equal>
+    auto contains(const K& key) const noexcept -> bool {
+        return find(key) != end();
     }
 
     auto remove(const_reference key) noexcept -> bool {
@@ -250,7 +249,7 @@ public:
         return false;
     }
 
-    template<typename K> requires is_transparent_v<hasher, K> && is_transparent_v<key_equal, K>
+    template<typename K> requires concepts::is_transparent<hasher> && concepts::is_transparent<key_equal>
     auto remove(K&& key) noexcept -> bool {
         auto index = m_hasher(key) % capacity();
 
@@ -352,14 +351,9 @@ private:
 
         while (m_buckets[index].occupied) {
             auto& old = m_buckets[index];
-            if (entry.hash == old.hash) {
-                return {end(), false};
-            }
-
             if (entry.distance > old.distance) {
                 std::swap(entry, old);
             }
-
             entry.distance++;
             index = (index + 1) % capacity();
         }
@@ -416,5 +410,6 @@ private:
     key_equal m_key_equal;
 };
 } // namespace rjh::detail
+
 
 #endif // #ifndef RJH_HASH_TABLE_HPP

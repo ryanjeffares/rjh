@@ -15,6 +15,8 @@ The `rjl` containers are not designed to be a drop-in replacement for STL contai
 * Figure out a way to return something from dereferencing an iterator that can be destructured
 * Finish API
   * Continue refactor - `update`, `emplace`, etc
+  * Test with new API
+  * Constructors, adding with iterators
 * More tests for iterators
 * Test concept restraints
 * Proper `noexcept` specifiers

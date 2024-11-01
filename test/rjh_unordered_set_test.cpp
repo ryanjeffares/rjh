@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ryan Jeffares (ryan.jeffares.business@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright
+ * notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #include "rjh/unordered_set.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -8,64 +23,12 @@ namespace rjh::tests {
 TEST_CASE("rjh::unordered_set<int>", "[rjh::unordered_set tests]") {
     unordered_set<int> set;
 
-    REQUIRE(set.empty());
-    REQUIRE(set.capacity() == 8);
-    REQUIRE(set.begin() == set.end());
 
-    for (auto i = 0; i < 100; i++) {
-        set.insert(i);
-    }
-
-    REQUIRE(set.size() == 100);
-    REQUIRE(*set.begin() == 0);
-
-    for (auto i = 0; i < 200; i++) {
-        if (i >= 100) {
-            REQUIRE(!set.contains(i));
-        } else {
-            REQUIRE(set.contains(i));
-        }
-    }
-
-    auto set1 = set;
-    REQUIRE(set1.size() == 100);
-    REQUIRE(set1.size() == set.size());
-    set.clear();
-    REQUIRE(set1.size() == 100);
-    REQUIRE(set.empty());
 }
 
 TEST_CASE("rjh::unordered_set<std::string>", "[rjh::unordered_set tests]") {
     unordered_set<std::string> set;
 
-    REQUIRE(set.empty());
-
-    set.insert("Ryan");
-    set.insert("C++");
-    set.insert("unordered_set unordered_set unordered_set unordered_set");
-
-    REQUIRE(set.size() == 3);
-    REQUIRE(set.contains("Ryan"));
-    REQUIRE(!set.contains(std::string{"A"}));
-
-    auto set1 = set;
-    REQUIRE(set1.size() == 3);
-    set.clear();
-    REQUIRE(set.empty());
-
-    for (auto i = 0; i < 1000; i++) {
-        set.insert(std::to_string(i));
-    }
-
-    REQUIRE(set.size() == 1000);
-
-    for (auto i = 0; i < 2000; i++) {
-        if (i >= 1000) {
-            REQUIRE(!set.contains(std::to_string(i)));
-        } else {
-            REQUIRE(set.contains(std::to_string(i)));
-        }
-    }
 }
 
 TEST_CASE("rjh::unordered_set<custom_type>", "[rjh::unordered_set tests]") {
@@ -86,15 +49,5 @@ TEST_CASE("rjh::unordered_set<custom_type>", "[rjh::unordered_set tests]") {
 
     unordered_set<custom_type, custom_type_hasher> set;
 
-    custom_type value {
-        .name = "Ryan",
-    };
-
-    set.insert(value);
-    REQUIRE(set.contains(value));
-    REQUIRE(set.size() == 1);
-    REQUIRE(set.remove(value));
-    REQUIRE(!set.remove(custom_type{}));
-    REQUIRE(set.empty());
 }
 } // namespace rjh::tests
